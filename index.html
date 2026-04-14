@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Remote Cam (PeerJS)</title>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <style>
+        body { font-family: sans-serif; text-align: center; background: #121212; color: white; padding: 20px; }
+        video { width: 100%; max-width: 500px; border-radius: 10px; background: #000; margin-top: 10px; }
+        .box { border: 1px solid #444; padding: 15px; border-radius: 10px; margin-bottom: 20px; }
+        button { padding: 10px 20px; font-size: 16px; cursor: pointer; border-radius: 5px; border: none; background: #007bff; color: white; margin: 5px; }
+        input { padding: 10px; border-radius: 5px; border: none; width: 200px; }
+        #my-id { font-weight: bold; color: #00ff00; font-size: 1.2em; }
+    </style>
+</head>
+<body>
+
+    <h2>Remote Cam & Mic</h2>
+
+    <div class="box">
+        <p>Your ID: <span id="my-id">Connecting...</span></p>
+    </div>
+
+    <!-- SENDER SECTION -->
+    <div class="box">
+        <h3>Step A: The "Camera" Device</h3>
+        <p>Click below to prepare this phone as the camera.</p>
+        <button onclick="startCamera()">Enable Camera & Mic</button>
+    </div>
+
+    <!-- RECEIVER SECTION -->
+    <div class="box">
+        <h3>Step B: The "Monitor" Device</h3>
+        <p>Enter the ID of the camera device below:</p>
+        <input type="text" id="target-id" placeholder="Paste ID here">
+        <button onclick="connectToCamera()">Watch Live</button>
+    </div>
+
+    <video id="remoteVideo" autoplay playsinline controls></video>
+
+    <script>
+        const peer = new Peer();
+        let localStream;
+
+        // Display your ID when connected to Peer server
+        peer.on('open', id => {
+            document.getElementById('my-id').innerText = id;
+        });
+
+        // 1. Logic for the CAMERA device (Sender)
+        async function startCamera() {
+            try {
+                localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                alert("Camera and Mic are ready. Now enter this ID on your other device.");
+            } catch (err) {
+                alert("Error accessing camera: " + err);
+            }
+        }
+
+        // Answer calls automatically (When the monitor calls the camera)
+        peer.on('call', call => {
+            if (localStream) {
+                call.answer(localStream); // Send the camera stream
+            } else {
+                alert("Someone is trying to watch, but camera isn't enabled on this device!");
+            }
+        });
+
+        // 2. Logic for the MONITOR device (Receiver)
+        function connectToCamera() {
+            const targetId = document.getElementById('target-id').value;
+            if (!targetId) return alert("Please enter a target ID");
+
+            const call = peer.call(targetId, null); // Start the call
+            
+            call.on('stream', remoteStream => {
+                const videoElement = document.getElementById('remoteVideo');
+                videoElement.srcObject = remoteStream;
+            });
+        }
+    </script>
+</body>
+</html>
